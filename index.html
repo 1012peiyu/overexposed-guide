@@ -1,0 +1,1023 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>過曝世代：互動式探索與心理疫苗</title>
+<!-- NOTE: 為了最大相容性，本檔案不依賴任何外部 JS 圖表庫；圖表以 Canvas 原生程式繪製。保留 Tailwind CDN 僅作為樣式加分；若被封鎖，功能仍可運作。 -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+<script>
+// Polyfills for older iOS Safari previewers
+(function(){
+  if(!NodeList.prototype.forEach){ NodeList.prototype.forEach = Array.prototype.forEach; }
+  if(!Array.from){ Array.from = function(a){ return [].slice.call(a); } }
+  if(!String.prototype.padStart){ String.prototype.padStart=function(n,chr){ var s=String(this); while(s.length<n){ s=(chr||' ')+s; } return s; } }
+})();
+</script>
+<!-- Tailwind for better look (可被封鎖；不影響功能) -->
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  :root{ --brand:#D35400; --ink:#4A4A4A; --bg:#FDFBF8; }
+  html,body{height:100%}
+  body{font-family:'Noto Sans TC',sans-serif;background:var(--bg);color:var(--ink)}
+  .nav-link{transition:color .3s,border-bottom-color .3s;border-bottom:2px solid transparent}
+  .nav-link:hover,.nav-link.active{color:var(--brand);border-bottom-color:var(--brand)}
+  .tab.active{background-color:var(--brand);color:#fff}
+  .tab:not(.active){background:#EAEAEA;color:var(--ink)}
+  .btn-primary{background:var(--brand);color:#fff;transition:background .2s}
+  .btn-primary:hover{background:#A04000}
+  .btn-secondary{background:#839192;color:#fff}
+  .btn-ghost{border:1px solid #ddd}
+  .btn-danger{background:#ef4444;color:#fff}
+  .btn-danger:hover{background:#dc2626}
+  .chart-container{position:relative;width:100%;max-width:640px;margin:0 auto;height:320px}
+  .shadow-soft{box-shadow:0 8px 24px rgba(0,0,0,.06)}
+  .pill{border-radius:9999px;padding:.25rem .7rem;border:1px solid #e5e7eb;display:inline-flex;gap:.35rem;align-items:center}
+  .pill.bad{background:#fee2e2;border-color:#fecaca}
+  .pill.good{background:#dcfce7;border-color:#bbf7d0}
+  canvas.doodle{touch-action:none;cursor:crosshair}
+  .modal{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;align-items:center;justify-content:center;padding:1rem;z-index:60}
+  details.theory-card summary::-webkit-details-marker{display:none}
+  details.theory-card[open]{border-color:var(--brand)}
+  .row-btn{border:1px solid #e5e7eb;padding:.3rem .55rem;border-radius:.5rem}
+  .guide-step{display:none}
+  .guide-step.active{display:block}
+  .js-ok{position:fixed;right:.5rem;bottom:.5rem;background:#22c55e;color:#fff;font-size:.75rem;padding:.15rem .45rem;border-radius:.35rem;z-index:80}
+  /* Basic fallback if Tailwind blocked */
+  .container{max-width:1100px;margin:0 auto}
+  .rounded-xl{border-radius:0.75rem} .rounded-2xl{border-radius:1rem}
+  .border{border:1px solid #e5e7eb} .bg-white{background:#fff}
+  .mb-16{margin-bottom:4rem} .mb-24{margin-bottom:6rem}
+  .p-8{padding:2rem} .p-6{padding:1.5rem} .p-4{padding:1rem} .p-3{padding:.75rem} .px-6{padding-left:1.5rem;padding-right:1.5rem}
+  .py-3{padding-top:.75rem;padding-bottom:.75rem} .py-4{padding-top:1rem;padding-bottom:1rem}
+  .text-center{text-align:center} .text-xl{font-size:1.25rem} .text-3xl{font-size:1.875rem} .text-4xl{font-size:2.25rem} .text-5xl{font-size:3rem}
+  .font-bold{font-weight:700} .font-semibold{font-weight:600}
+  .max-w-3xl{max-width:48rem} .max-w-4xl{max-width:56rem} .max-w-5xl{max-width:64rem}
+  .mx-auto{margin-left:auto;margin-right:auto}
+  .hidden{display:none}
+  @media (min-width:768px){ .md\:flex{display:flex} .md\:grid-cols-2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1.5rem} }
+</style>
+</head>
+<body class="antialiased">
+<div id="jsOk" class="js-ok" style="display:none">JS OK</div>
+
+<header class="bg-white/80 backdrop-blur-md sticky top-0 z-50 shadow-sm">
+  <nav class="container px-6 py-3 flex justify-between items-center">
+    <div class="text-xl font-bold text-gray-800">過曝世代指南（v10.4 / Single‑file）</div>
+    <div class="hidden md:flex space-x-8">
+      <a href="#challenge" class="nav-link">核心挑戰</a>
+      <a href="#amplifier" class="nav-link">網路放大鏡</a>
+      <a href="#motivation" class="nav-link">標籤牆</a>
+      <a href="#vaccines" class="nav-link">心理疫苗</a>
+      <a href="#wrap" class="nav-link">收束與匯出</a>
+    </div>
+  </nav>
+</header>
+
+<main class="container px-6 py-8 md:py-16">
+
+  <section id="hero" class="text-center mb-16 md:mb-24">
+    <h1 class="text-4xl md:text-5xl font-bold text-gray-800 mb-4">給過曝世代的心理疫苗</h1>
+    <p class="text-lg md:text-xl text-gray-600 max-w-3xl mx-auto">
+      在一個充滿評價與關注的世界裡，我們的孩子如何建立內心的寧靜與從容？本指南將帶您探索「過曝世代」的內心世界，並提供實用的方法，陪伴他們健康成長。
+    </p>
+  </section>
+
+  <section id="challenge" class="mb-16 md:mb-24 scroll-mt-20">
+    <h2 class="text-3xl font-bold text-center mb-2 text-gray-800">核心挑戰：代位觀點</h2>
+    <p class="text-center text-gray-600 mb-8 max-w-2xl mx-auto">
+      青少年過度在意他人眼光是天性，但問題的根源不僅於此。他們腦中的「別人怎麼看我」，其實是自己對自己的偏頗評價，加上在意他人天性的投射。這就是「代位觀點」，也是焦慮的主要來源。
+    </p>
+    <div class="bg-white p-8 rounded-xl shadow-soft max-w-4xl mx-auto">
+      <div class="flex flex-col md:flex-row items-center justify-center space-y-6 md:space-y-0 md:space-x-6 text-center">
+        <div class="p-6 bg-amber-100 rounded-lg w-full md:w-1/3">
+          <h3 class="text-xl font-semibold text-amber-800 mb-2">成分一：在意他人</h3>
+          <p class="text-amber-700">這是青春期的天性，渴望被同儕接納與認同。</p>
+        </div>
+        <div class="text-4xl font-bold text-gray-400">+</div>
+        <div class="p-6 bg-red-100 rounded-lg w-full md:w-1/3">
+          <h3 class="text-xl font-semibold text-red-800 mb-2">成分二：偏頗的自我評價</h3>
+          <p class="text-red-700">這是問題的核心，源於內心深處「擔心自己不被喜歡」。</p>
+        </div>
+        <div class="text-4xl font-bold text-gray-400">=</div>
+        <div class="p-6 bg-blue-100 rounded-lg w-full md:w-1/3">
+          <h3 class="text-xl font-semibold text-blue-800 mb-2">結果：內心痛苦</h3>
+          <p class="text-blue-700">「在想像中比在現實中更經常受苦。」- 塞內卡</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="amplifier" class="mb-16 md:mb-24 scroll-mt-20">
+    <h2 class="text-3xl font-bold text-center mb-2 text-gray-800">網路放大鏡：社群如何加劇焦慮</h2>
+    <p class="text-center text-gray-600 mb-8 max-w-2xl mx-auto">
+      社群媒體將人際關係變得公開且直接。每一次發文、每一張照片，都成為被評價的對象。這種持續的曝光，讓孩子不斷預演他人的反應，將「在意他人眼光」的焦慮無限放大。
+    </p>
+    <div class="bg-white p-8 rounded-xl shadow-soft max-w-4xl mx-auto">
+      <div class="chart-container">
+        <canvas id="socialPressureChart"></canvas>
+      </div>
+      <p class="text-center text-sm text-gray-500 mt-4">圖表說明：相較於現實生活，網路社群大幅增加了每日可能面臨他人評價的次數與強度。</p>
+    </div>
+  </section>
+
+  <section id="motivation" class="mb-16 md:mb-24 scroll-mt-20">
+    <h2 class="text-3xl font-bold text-center mb-3 text-gray-800">🏷️ 引起動機：標籤牆</h2>
+    <div class="bg-white p-8 rounded-xl shadow-soft max-w-5xl mx-auto">
+      <div class="grid md:grid-cols-2 gap-6">
+        <div>
+          <div class="flex gap-3 mb-3">
+            <input id="tagInput" class="flex-1 rounded-lg border px-3 py-2" placeholder="輸入被貼過的標籤，例如：玻璃心、邊緣人、太安靜…" />
+            <select id="tagTone" class="rounded-lg border px-2 py-2">
+              <option value="bad">😵 負向</option>
+              <option value="good">🌟 正向</option>
+              <option value="neutral" selected>😶 中性</option>
+            </select>
+            <button id="addTagBtn" class="btn-primary rounded-lg px-4 py-2">新增</button>
+          </div>
+          <div id="tagWall" class="min-h-[88px] p-3 border rounded-xl flex flex-wrap gap-3"></div>
+        </div>
+        <aside class="space-y-3">
+          <div class="p-4 rounded-xl bg-amber-50">
+            <div class="font-semibold mb-1">帶領小撇步</div>
+            <ul class="text-sm text-gray-700 list-disc list-inside space-y-1">
+              <li>允許匿名貼標籤。</li>
+              <li>提醒：不評論他人內容，只說自己的感受。</li>
+              <li>收斂：請大家觀察牆上重複度最高的字詞。</li>
+            </ul>
+          </div>
+          <div class="p-4 rounded-xl bg-blue-50">
+            <div class="font-semibold mb-1">延伸</div>
+            <p class="text-sm text-gray-700">下一步「標籤反轉」會用到這些負向標籤。</p>
+          </div>
+        </aside>
+      </div>
+    </div>
+  </section>
+
+  <section id="vaccines" class="mb-16 md:mb-24 scroll-mt-20">
+    <h2 class="text-3xl font-bold text-center mb-2 text-gray-800">三種心理疫苗：建立內心防護網</h2>
+    <p class="text-center text-gray-600 mb-8 max-w-2xl mx-auto">
+      與其告訴孩子「不要在意」（這違反天性），不如為他們接種三種心理疫苗，從根本建立內在力量，學習與外界的評價和平共處。
+    </p>
+    <div class="max-w-5xl mx-auto">
+      <div class="flex flex-wrap justify-center mb-6 border-b border-gray-200 gap-2">
+        <button data-tab="tab1" class="tab text-lg font-medium py-3 px-6 rounded-t-lg -mb-px active">🧭 管理外在與注意力（疫苗1）</button>
+        <button data-tab="tab2" class="tab text-lg font-medium py-3 px-6 rounded-t-lg -mb-px">🎯 調整對評價的認知（疫苗2＋5）</button>
+        <button data-tab="tab3" class="tab text-lg font-medium py-3 px-6 rounded-t-lg -mb-px">🏗️ 建構穩固的自我（疫苗3＋4＋6）</button>
+      </div>
+      <div id="tabContent" class="bg-white p-8 rounded-xl shadow-soft min-h-[340px]"></div>
+    </div>
+  </section>
+
+  <section id="wrap" class="mb-10 scroll-mt-20">
+    <h2 class="text-3xl font-bold text-center mb-3 text-gray-800">🔚 收束與匯出</h2>
+    <div class="bg-white p-8 rounded-xl shadow-soft max-w-4xl mx-auto">
+      <ul class="list-disc list-inside text-gray-700 leading-7">
+        <li>外在訊息可管理，評價可重述，自我可建構。</li>
+        <li>把「被看見」的焦慮，轉為「自我看見」的清楚。</li>
+        <li>若時間有限：用「標籤牆 → 反轉 → 專注 1 分鐘」也能完成精簡版帶讀。</li>
+      </ul>
+      <div class="mt-5 flex flex-wrap gap-2 items-center">
+        <button id="exportBtn" class="btn-ghost rounded-lg px-4 py-2">預覽並匯出紀錄</button>
+        <button id="clearAllBtn" class="btn-danger rounded-lg px-4 py-2">清除本機暫存資料</button>
+        <span id="exportHint" class="text-sm text-gray-500"></span>
+      </div>
+      <p class="text-xs text-gray-500 mt-2">清除會刪除：標籤牆、反轉紀錄、三層認同、濾鏡差距（僅本機瀏覽器）。</p>
+    </div>
+  </section>
+
+  <footer class="text-center py-8 border-t border-gray-200">
+    <p class="text-gray-600">這是一個基於《過曝世代》讀書會資料所創建的互動式指南。</p>
+    <p class="text-sm text-gray-500 mt-2">為家長與教育者提供支持，共同陪伴孩子成長。</p>
+  </footer>
+</main>
+
+<!-- 匯出 Modal -->
+<div id="exportModal" class="modal">
+  <div class="bg-white rounded-2xl shadow-soft max-w-3xl w-full">
+    <div class="px-6 py-4 border-b flex justify-between items-center">
+      <h3 class="font-semibold text-lg">匯出預覽</h3>
+      <button id="closeModal" class="text-gray-500 hover:text-gray-700">✕</button>
+    </div>
+    <div class="p-6 space-y-3">
+      <textarea id="exportText" rows="12" class="w-full border rounded-lg px-3 py-2 font-mono text-sm"></textarea>
+      <div class="flex flex-wrap gap-2">
+        <button id="copyBtn" class="btn-primary rounded-lg px-3 py-2">複製到剪貼簿</button>
+        <button id="dlTxtUtf8" class="btn-ghost rounded-lg px-3 py-2">下載 TXT（UTF‑8）</button>
+        <button id="dlTxtBom" class="btn-ghost rounded-lg px-3 py-2">下載 TXT（UTF‑8 + BOM）</button>
+        <button id="dlMd" class="btn-ghost rounded-lg px-3 py-2">下載 Markdown</button>
+        <button id="dlCsv" class="btn-ghost rounded-lg px-3 py-2">下載 CSV</button>
+      </div>
+      <p class="text-xs text-gray-500">若瀏覽器阻擋下載，請先按「複製到剪貼簿」，再貼到任何文字編輯器另存。</p>
+    </div>
+  </div>
+</div>
+
+<!-- 引導 Modal -->
+<div id="guideModal" class="modal">
+  <div class="bg-white rounded-2xl shadow-soft max-w-3xl w-full">
+    <div class="px-6 py-4 border-b flex justify-between items-center">
+      <h3 class="font-semibold text-lg">整合引導版本：心理學 × 操作教學</h3>
+      <button id="closeGuide" class="text-gray-500 hover:text-gray-700">✕</button>
+    </div>
+    <div class="p-6">
+      <div class="flex flex-wrap gap-2 mb-4">
+        <button class="row-btn guide-nav" data-step="1">Step 1｜Core</button>
+        <button class="row-btn guide-nav" data-step="2">Step 2｜Role</button>
+        <button class="row-btn guide-nav" data-step="3">Step 3｜Image</button>
+        <button class="row-btn guide-nav" data-step="4">整體檢核</button>
+      </div>
+      <div id="guideStep1" class="guide-step">
+        <h4 class="font-semibold mb-1">Step 1｜Core（個人價值清單）</h4>
+        <h5 class="mt-2 font-semibold text-gray-800">提示文字（操作引導）</h5>
+        <ul class="list-disc list-inside text-gray-700 mt-1 space-y-1">
+          <li>先列出你覺得重要的價值觀（如「誠實」「創造力」「關懷」），你可以新增、刪除、調整順序。</li>
+          <li>每週勾選「本週核心價值」，它將成為你這週的行動指南。</li>
+        </ul>
+        <h5 class="mt-3 font-semibold text-gray-800">心理學小卡（理論解說）</h5>
+        <p class="text-gray-700"><b>為什麼要做？</b> 這是「價值澄清法」的一部分。當你清楚什麼對你最重要，你的行動會更有方向，不容易被外界的評價帶走焦點。</p>
+        <div class="mt-2 p-3 bg-gray-50 rounded-lg">
+          <div class="text-gray-700"><b>對應理論：</b></div>
+          <ul class="list-disc list-inside text-gray-700 mt-1 space-y-1">
+            <li>價值澄清法（Values Clarification）</li>
+            <li>自我決定理論（Self-Determination Theory）</li>
+            <li>ACT 接受與承諾治療（Acceptance & Commitment Therapy）</li>
+          </ul>
+        </div>
+      </div>
+      <div id="guideStep2" class="guide-step">
+        <h4 class="font-semibold mb-1">Step 2｜Role（社會角色與行為規則）</h4>
+        <h5 class="mt-2 font-semibold text-gray-800">提示文字（操作引導）</h5>
+        <ul class="list-disc list-inside text-gray-700 mt-1 space-y-1">
+          <li>輸入你在生活中扮演的角色（如「老師」「朋友」「家人」），每個角色設定一條行為規則。</li>
+          <li>不確定怎麼寫？點「用核心價值自動套版」，系統會用你剛剛選的價值幫你生出一句話（如「作為朋友，我會透過誠實傾聽來建立信任」），再自己微調。</li>
+        </ul>
+        <h5 class="mt-3 font-semibold text-gray-800">心理學小卡（理論解說）</h5>
+        <p class="text-gray-700"><b>為什麼要做？</b> 我們每天在不同場合切換角色，如果角色之間的行為與價值一致，就能減少內在衝突，活得更穩定。</p>
+        <div class="mt-2 p-3 bg-gray-50 rounded-lg">
+          <div class="text-gray-700"><b>對應理論：</b></div>
+          <ul class="list-disc list-inside text-gray-700 mt-1 space-y-1">
+            <li>社會角色理論（Social Role Theory）</li>
+            <li>角色認同理論（Role Identity Theory）</li>
+            <li>鏡中自我（Looking-Glass Self）</li>
+          </ul>
+        </div>
+      </div>
+      <div id="guideStep3" class="guide-step">
+        <h4 class="font-semibold mb-1">Step 3｜Image（形象認同）</h4>
+        <h5 class="mt-2 font-semibold text-gray-800">提示文字（操作引導）</h5>
+        <ul class="list-disc list-inside text-gray-700 mt-1 space-y-1">
+          <li>輸入你希望別人看到的形象（如「專業而溫暖」「有創意的行動者」）。</li>
+          <li>匯出時，系統會將它與 Core / Role 一起顯示，讓你檢查形象是否與價值、角色行為一致。</li>
+        </ul>
+        <h5 class="mt-3 font-semibold text-gray-800">心理學小卡（理論解說）</h5>
+        <p class="text-gray-700"><b>為什麼要做？</b> 形象是一種「對外的我」。如果它與內心價值不一致，你會覺得疲累、虛假。當它和價值、角色對齊，你的自我概念會更清晰，也更自信。</p>
+        <div class="mt-2 p-3 bg-gray-50 rounded-lg">
+          <div class="text-gray-700"><b>對應理論：</b></div>
+          <ul class="list-disc list-inside text-gray-700 mt-1 space-y-1">
+            <li>形象管理（Impression Management）</li>
+            <li>自我概念清晰度（Self-Concept Clarity）</li>
+            <li>社會認同理論（Social Identity Theory）</li>
+          </ul>
+        </div>
+      </div>
+      <div id="guideStep4" class="guide-step">
+        <h4 class="font-semibold mb-2">整體檢核引導</h4>
+        <p class="text-gray-700">恭喜完成！現在看看你的「價值 → 角色 → 形象」三者是否對齊：</p>
+        <ul class="list-disc list-inside text-gray-700 mt-1 space-y-1">
+          <li>你的形象能反映出你的核心價值嗎？</li>
+          <li>你的每個角色行為，是否都支援你想要呈現的形象？</li>
+          <li>如果三者有衝突，哪一塊需要調整？</li>
+        </ul>
+        <div class="mt-3 p-3 bg-gray-50 rounded-lg">
+          <div class="text-gray-700"><b>心理學小卡：</b></div>
+          <p class="text-gray-700 mt-1">這是一個「自我認同校準」的過程：</p>
+          <ul class="list-disc list-inside text-gray-700 mt-1 space-y-1">
+            <li><b>價值</b>是方向感</li>
+            <li><b>角色行為</b>是落地方式</li>
+            <li><b>形象</b>是對外呈現</li>
+          </ul>
+          <p class="text-gray-700 mt-1">當三者一致時，你會感覺更有力量、更穩定。</p>
+        </div>
+        <div class="mt-4">
+          <h5 class="font-semibold mb-1">對齊檢核圖</h5>
+          <p class="text-gray-700 mb-2">以 0–100 分呈現三個一致度：Core↔Role、Core↔Image、Role↔Image（依文字相似度估計）。</p>
+          <div class="chart-container" style="max-width:520px;height:320px">
+            <canvas id="alignRadar"></canvas>
+          </div>
+          <p id="alignText" class="text-gray-700 mt-3"></p>
+        </div>
+      </div>
+      <div class="mt-5 flex justify-between">
+        <button id="prevStep" class="row-btn">← 上一步</button>
+        <button id="nextStep" class="row-btn">下一步 →</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- TABS 內容樣板 -->
+<template id="tab1-tpl">
+  <div class="grid md:grid-cols-2 gap-6">
+    <div class="space-y-6">
+      <div class="rounded-2xl border p-5 text-center">
+        <h3 class="text-xl font-semibold mb-1">🧘 專注力練習：一分鐘挑戰</h3>
+        <p class="text-gray-600 mb-4">閉上眼睛在心中默數，當你覺得一分鐘到了就按「結束」。</p>
+        <div id="timerDisplay" class="text-6xl font-bold text-gray-800 mb-6">00:00</div>
+        <div id="timerControls">
+          <button id="startTimerBtn" class="btn-primary font-bold py-3 px-8 rounded-full text-lg">開始</button>
+        </div>
+        <div id="timerResult" class="mt-6 text-lg text-gray-700"></div>
+      </div>
+
+      <div>
+        <h3 class="text-xl font-semibold">🎨 纏繞畫（Zentangle）</h3>
+        <p class="text-gray-700 mb-2">在下方畫布上重複簡單線條或幾何圖形，讓大腦進入穩定節奏。</p>
+        <div class="flex gap-2 mb-2">
+          <button id="startDoodle" class="btn-ghost rounded-lg px-3 py-2">開始繪製</button>
+          <button id="clearDoodle" class="btn-ghost rounded-lg px-3 py-2">清除</button>
+        </div>
+        <canvas id="doodleCanvas" class="border rounded-xl w-full doodle bg-white" style="height:320px;"></canvas>
+      </div>
+    </div>
+
+    <div class="space-y-4">
+      <h3 class="text-xl font-semibold">🥜 正念吃堅果（或葡萄乾）</h3>
+      <ol class="list-decimal list-inside text-gray-700 space-y-1">
+        <li>先不吃，<b>只看</b>：觀察形狀、顏色、紋理。</li>
+        <li><b>嗅聞</b>：注意香氣強弱、變化。</li>
+        <li><b>入口不咬</b>：感受重量、溫度、口感。</li>
+        <li><b>緩慢咀嚼</b>：留意破裂聲與味道擴散。</li>
+        <li><b>吞嚥後</b>：覺察餘味與身體訊號。</li>
+      </ol>
+      <div class="p-4 rounded-xl bg-emerald-50 text-gray-700">
+        <b>帶領提醒：</b>這不是吃零食，而是練習把注意力放回自己的感官。
+      </div>
+    </div>
+  </div>
+</template>
+
+<template id="tab2-tpl">
+  <div class="flex items-center justify-between flex-wrap gap-2 mb-4">
+    <h3 class="text-xl font-semibold">🎯 調整對評價的認知（疫苗2＋5）</h3>
+  </div>
+  <div class="grid md:grid-cols-2 gap-6">
+    <div class="space-y-4">
+      <h4 class="text-lg font-semibold">🔄 標籤反轉（使用上方標籤牆）</h4>
+      <p class="text-gray-700">選擇一張「負向」標籤，嘗試把它改寫成資源或訊號。</p>
+      <div class="flex gap-2">
+        <button id="pickBadTag" class="btn-ghost rounded-lg px-3 py-2">從標籤牆抽一張負向標籤</button>
+        <span id="pickedTag" class="pill">尚未抽取</span>
+      </div>
+      <div class="mt-2">
+        <label class="text-sm text-gray-600">反轉後的新敘事</label>
+        <input id="flipRewrite" class="w-full rounded-lg border px-3 py-2" placeholder="例如：『玻璃心』→『高度敏銳、能同理他人』" />
+        <div class="mt-2 flex gap-2 flex-wrap items-center">
+          <button id="saveFlip" class="btn-primary rounded-lg px-3 py-2">儲存反轉</button>
+          <button id="cancelEdit" class="btn-ghost rounded-lg px-3 py-2 hidden">取消編輯</button>
+          <span id="flipSavedHint" class="text-sm text-gray-500"></span>
+        </div>
+      </div>
+      <div class="p-4 rounded-xl bg-blue-50 text-gray-700">
+        <b>提示：</b>請使用「事實 → 詮釋 → 行動」三步驟：我觀察到___；我可以替代性詮釋___；我下一步會___。
+      </div>
+    </div>
+    <div class="space-y-4">
+      <h4 class="text-lg font-semibold">🃏 FLIP 反轉卡（迷你版）</h4>
+      <p class="text-gray-700">抽一張卡，套用在剛剛那個標籤事件上。</p>
+      <div class="flex gap-2">
+        <button id="drawFlipCard" class="btn-ghost rounded-lg px-3 py-2">抽卡</button>
+        <span id="flipCard" class="pill">尚未抽卡</span>
+      </div>
+      <ul id="flipCardGuide" class="list-disc list-inside text-gray-700 mt-2 space-y-1"></ul>
+      <div class="p-4 rounded-xl bg-amber-50 text-gray-700"><b>說明：</b>示範卡，若有正式桌遊請依規則。</div>
+      <div class="mt-4">
+        <h4 class="font-semibold">📄 已儲存的反轉紀錄</h4>
+        <ul id="flipList" class="text-gray-700 mt-1 space-y-2"></ul>
+      </div>
+    </div>
+  </div>
+</template>
+
+<template id="tab3-tpl">
+  <div class="space-y-8">
+    <div>
+      <div class="flex items-center justify-between flex-wrap gap-2 mb-2">
+        <h3 class="text-xl font-semibold">📚 理論小卡（鏡中自我 → 自我決定理論 → 自我概念清晰度）</h3>
+        <div class="flex gap-2">
+          <button id="openGuide" class="row-btn">🧭 開啟引導模式</button>
+        </div>
+      </div>
+      <div class="grid md:grid-cols-2 gap-4">
+        <details class="theory-card border rounded-xl p-4 bg-white open:shadow-soft">
+          <summary class="cursor-pointer flex items-center gap-2 select-none"><span class="text-2xl">🪞</span><span class="font-semibold">鏡中自我（Cooley）</span></summary>
+          <div class="mt-3 text-gray-700 space-y-2">
+            <div><b>核心概念：</b>我們透過想像別人怎麼看我們，來形塑自我形象；流程包含「想像他人眼中的我」→「想像他人的評價」→「據此產生情緒與自我改變」。</div>
+            <div class="p-3 bg-blue-50 rounded-lg"><b>生活例子：</b>每天打開 IG / FB 就像拿著一面鏡子，但這面鏡子加了濾鏡與演算法，會放大按讚與評論，久了核心自我會被扭曲或變模糊。</div>
+          </div>
+        </details>
+        <details class="theory-card border rounded-xl p-4 bg-white">
+          <summary class="cursor-pointer flex items-center gap-2 select-none"><span class="text-2xl">🎯</span><span class="font-semibold">自我決定理論（Deci & Ryan）</span></summary>
+          <div class="mt-3 text-gray-700 space-y-2">
+            <div><b>核心概念：</b>穩固的自我建立在三種基本心理需求被滿足：<u>自主性</u>（由自己選擇）、<u>勝任感</u>（有能力感）、<u>關係連結</u>（被真誠接納）。外在評價過度時，這三者易受侵蝕。</div>
+            <div class="p-3 bg-emerald-50 rounded-lg"><b>生活例子：</b>只為取悅別人的創作會耗竭（失去自主）；但若出於熱愛而持續，即使觀眾不多也能感到滿足（內在動機）。</div>
+          </div>
+        </details>
+        <details class="theory-card border rounded-xl p-4 bg-white">
+          <summary class="cursor-pointer flex items-center gap-2 select-none"><span class="text-2xl">🧩</span><span class="font-semibold">自我概念清晰度（Campbell 等）</span></summary>
+          <div class="mt-3 text-gray-700 space-y-2">
+            <div><b>核心概念：</b>指個人對自己特質與價值的認識是否清楚、穩定且一致。清晰度高者在面對外界評價時較不易動搖，對心理健康有保護作用。</div>
+            <div class="p-3 bg-amber-50 rounded-lg"><b>生活例子：</b>當你篤定「誠實比討好更重要」，面對「不夠圓滑」的批評也不會否定自己；反之，若不清楚自己重視什麼，就容易被每一次評價牽動。</div>
+          </div>
+        </details>
+      </div>
+    </div>
+
+    <div class="space-y-4">
+      <h3 class="text-xl font-semibold">🏛️ 三層認同對齊卡（加強版）</h3>
+      <div class="grid md:grid-cols-2 gap-6">
+        <div class="space-y-3">
+          <div class="p-4 rounded-xl bg-gray-50">
+            <div class="font-semibold mb-2">Core｜個人價值清單</div>
+            <div id="valuesList" class="space-y-2"></div>
+            <div class="flex gap-2 mt-2">
+              <input id="newValue" class="flex-1 rounded-lg border px-3 py-2" placeholder="輸入價值詞，如：誠實、關懷、好奇…" />
+              <button id="addValue" class="row-btn">新增</button>
+            </div>
+            <div class="text-sm text-gray-600 mt-2">提示：用「動作詞」描述價值（例：傾聽、查證、回應）。</div>
+          </div>
+          <div class="p-4 rounded-xl bg-gray-50">
+            <div class="font-semibold mb-2">本週核心價值（擇一）</div>
+            <div id="weeklyCoreGroup" class="space-y-2"></div>
+          </div>
+          <div>
+            <label class="text-sm text-gray-600">Image｜形象認同（希望被看見的樣子）</label>
+            <input id="idImage" class="w-full rounded-lg border px-3 py-2" placeholder="例：可靠、溫暖、專業…" />
+          </div>
+        </div>
+
+        <div class="space-y-3">
+          <div class="p-4 rounded-xl bg-gray-50">
+            <div class="font-semibold mb-2">Role｜社會角色與行為規則</div>
+            <div id="rolesList" class="space-y-3"></div>
+            <div class="flex gap-2 mt-2">
+              <input id="newRole" class="flex-1 rounded-lg border px-3 py-2" placeholder="輸入角色，如：老師、朋友、家人…" />
+              <button id="addRole" class="row-btn">新增角色</button>
+            </div>
+            <div class="text-sm text-gray-600 mt-2">規則模板：當我在【角色】面對【情境】時，我以【核心價值】為準，選擇【具體行為】。</div>
+          </div>
+          <div class="flex items-center gap-2">
+            <button id="saveIdentity" class="btn-primary rounded-lg px-3 py-2">儲存對齊卡</button>
+            <button id="openGuide2" class="row-btn">🧭 引導模式</button>
+            <span id="idSavedHint" class="text-sm text-gray-500"></span>
+          </div>
+          <div id="idPreview" class="mt-1 p-4 bg-white rounded-xl border text-gray-700 hidden"></div>
+        </div>
+      </div>
+
+      <div class="grid md:grid-cols-2 gap-6">
+        <div class="space-y-2">
+          <h4 class="font-semibold">🪞 濾鏡差距自查</h4>
+          <div class="grid grid-cols-2 gap-3">
+            <div><label class="text-sm text-gray-600">我在社群上的樣子</label><textarea id="onlineSelf" class="w-full rounded-lg border px-3 py-2" rows="4"></textarea></div>
+            <div><label class="text-sm text-gray-600">我在現實生活的樣子</label><textarea id="offlineSelf" class="w-full rounded-lg border px-3 py-2" rows="4"></textarea></div>
+          </div>
+          <div class="mt-1"><button id="saveMirror" class="btn-ghost rounded-lg px-3 py-2">儲存</button><span id="mirrorSavedHint" class="text-sm text-gray-500"></span></div>
+          <div id="gapPreview" class="mt-3 p-4 bg-gray-50 rounded-xl text-gray-700 hidden"></div>
+        </div>
+        <div class="p-4 rounded-xl bg-amber-50 text-gray-700">
+          <b>帶領提醒：</b>Image/Role 的表現，盡量由 Core 價值長出去；若有衝突，用「最小妥協＋情境優先序」微調下一步行為。
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script>
+(function(){
+  function $(s){ return document.querySelector(s); }
+  function $all(s){ return document.querySelectorAll(s); }
+  function showJsOk(){ var el=$('#jsOk'); if(el) el.style.display='block'; }
+  showJsOk();
+
+  // NAV ACTIVE
+  var navLinks=$all('.nav-link'); var sections=$all('main section');
+  window.addEventListener('scroll', function(){
+    var current='';
+    sections.forEach(function(section){ if(pageYOffset >= section.offsetTop - 80) current = section.getAttribute('id'); });
+    navLinks.forEach(function(link){ link.classList.remove('active'); if(link.getAttribute('href').substring(1)===current) link.classList.add('active'); });
+  });
+
+  // Simple tokenizer + Jaccard
+  function tokenize(s){ var m=String(s||'').toLowerCase().match(/[\u4e00-\u9fa5\w]+/g); return m?m:[]; }
+  function jaccard(a,b){
+    var A=Array.from(new Set(tokenize(a))); var B=Array.from(new Set(tokenize(b)));
+    var inter=A.filter(function(x){return B.indexOf(x)>-1}).length; var uni=Array.from(new Set(A.concat(B))).length||1; return inter/uni;
+  }
+
+  // Storage
+  var store={
+    get tags(){ try{return JSON.parse(localStorage.getItem('tags')||'[]')}catch(e){return []} },
+    set tags(v){ localStorage.setItem('tags', JSON.stringify(v)) },
+    get flips(){ try{return JSON.parse(localStorage.getItem('flips')||'[]')}catch(e){return []} },
+    set flips(v){ localStorage.setItem('flips', JSON.stringify(v)) },
+    get identity(){ try{return JSON.parse(localStorage.getItem('identity')||'{}')}catch(e){return {}} },
+    set identity(v){ localStorage.setItem('identity', JSON.stringify(v)) },
+    get mirror(){ try{return JSON.parse(localStorage.getItem('mirror')||'{}')}catch(e){return {}} },
+    set mirror(v){ localStorage.setItem('mirror', JSON.stringify(v)) }
+  };
+
+  // Fallback charts (no external libs)
+  function drawBarChart(canvas, labels, values){
+    if(!canvas || !canvas.getContext) return;
+    var ctx=canvas.getContext('2d');
+    // HiDPI
+    var ratio=window.devicePixelRatio||1;
+    var rect=canvas.getBoundingClientRect();
+    canvas.width=rect.width*ratio; canvas.height=rect.height*ratio; ctx.setTransform(ratio,0,0,ratio,0,0);
+
+    var W=rect.width, H=rect.height, pad=40, barH=36, gap=28;
+    ctx.clearRect(0,0,W,H);
+    ctx.font='14px sans-serif'; ctx.fillStyle='#111';
+    var max=100;
+    for(var i=0;i<labels.length;i++){
+      var y=pad + i*(barH+gap);
+      // label
+      ctx.fillStyle='#444'; ctx.fillText(labels[i], 10, y+barH*0.7);
+      // bar bg
+      ctx.fillStyle='#e5e7eb'; ctx.fillRect(220, y, W-260, barH);
+      // bar value
+      var w=(W-260)*Math.max(0,Math.min(1,values[i]/max));
+      ctx.fillStyle= i===0 ? 'rgba(52, 152, 219, 0.9)' : 'rgba(211, 84, 0, 0.9)';
+      ctx.fillRect(220, y, w, barH);
+      // value text
+      ctx.fillStyle='#111'; ctx.fillText(values[i], 225+w-20, y+barH*0.7);
+    }
+    // axis title
+    ctx.fillStyle='#666'; ctx.fillText('相對強度與頻率指數（0–100）', 220, H-12);
+  }
+
+  function drawRadar3(canvas, labels, values){ // values: 0–100
+    if(!canvas || !canvas.getContext) return;
+    var ctx=canvas.getContext('2d');
+    var ratio=window.devicePixelRatio||1;
+    var rect=canvas.getBoundingClientRect();
+    canvas.width=rect.width*ratio; canvas.height=rect.height*ratio; ctx.setTransform(ratio,0,0,ratio,0,0);
+
+    var W=rect.width, H=rect.height;
+    var cx=W/2, cy=H/2+10, R=Math.min(W,H)*0.33;
+    ctx.clearRect(0,0,W,H);
+    ctx.font='13px sans-serif';
+
+    // axes (triangle)
+    var angles=[-Math.PI/2, -Math.PI/2+2*Math.PI/3, -Math.PI/2+4*Math.PI/3];
+    ctx.strokeStyle='#e5e7eb';
+    for(var k=1;k<=5;k++){
+      ctx.beginPath();
+      for(var i=0;i<3;i++){
+        var r=R*(k/5);
+        var x=cx + r*Math.cos(angles[i]);
+        var y=cy + r*Math.sin(angles[i]);
+        if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+      }
+      ctx.closePath(); ctx.stroke();
+    }
+    // axis lines
+    ctx.strokeStyle='#cbd5e1';
+    for(var j=0;j<3;j++){
+      ctx.beginPath(); ctx.moveTo(cx,cy);
+      ctx.lineTo(cx + R*Math.cos(angles[j]), cy + R*Math.sin(angles[j]));
+      ctx.stroke();
+    }
+    // labels
+    var labelOff=18; ctx.fillStyle='#111';
+    for(var m=0;m<3;m++){
+      var lx=cx + (R+labelOff)*Math.cos(angles[m]);
+      var ly=cy + (R+labelOff)*Math.sin(angles[m]);
+      ctx.textAlign = Math.cos(angles[m])>0.1 ? 'left' : (Math.cos(angles[m])<-0.1 ? 'right' : 'center');
+      ctx.textBaseline = Math.sin(angles[m])>0.1 ? 'top' : (Math.sin(angles[m])<-0.1 ? 'bottom' : 'middle');
+      ctx.fillText(labels[m], lx, ly);
+    }
+    // data polygon
+    ctx.beginPath();
+    for(var t=0;t<3;t++){
+      var rr=R*(Math.max(0,Math.min(100,values[t]))/100);
+      var px=cx + rr*Math.cos(angles[t]);
+      var py=cy + rr*Math.sin(angles[t]);
+      if(t===0) ctx.moveTo(px,py); else ctx.lineTo(px,py);
+    }
+    ctx.closePath();
+    ctx.fillStyle='rgba(211,84,0,0.25)'; ctx.fill();
+    ctx.strokeStyle='rgba(211,84,0,1)'; ctx.stroke();
+  }
+
+  // Social Pressure chart init
+   window.addEventListener('DOMContentLoaded', () => {
+      const c = document.getElementById('socialPressureChart');
+      if (c && c.getContext) {
+        const g = c.getContext('2d');
+        new Chart(g, {
+          type: 'bar',
+          data: {
+            labels: ['現實生活中的評價時刻', '社群媒體上的評價時刻'],
+            datasets: [{
+              label: '每日可能面臨的評價強度與頻率',
+              data: [25, 85],
+              backgroundColor: ['rgba(52, 152, 219, 0.6)','rgba(211, 84, 0, 0.6)'],
+              borderColor: ['rgba(52, 152, 219, 1)','rgba(211, 84, 0, 1)'],
+              borderWidth: 1
+            }]
+          },
+          options: {
+            responsive: true, maintainAspectRatio: false, indexAxis: 'y',
+            scales: { x: { beginAtZero: true, max: 100, title: { display: true, text: '相對強度與頻率指數' } } },
+            plugins: { legend: { display: false } }
+          }
+        });
+      }
+  });
+
+  // Tag wall
+  function bindTagWall(){
+    var tagInput=$('#tagInput'), tagTone=$('#tagTone'), addTagBtn=$('#addTagBtn'), tagWall=$('#tagWall');
+    function escapeHtml(s){ return (s||'').replace(/[&<>"]/g, function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]}); }
+    function renderTags(){
+      if(!tagWall) return;
+      tagWall.innerHTML='';
+      store.tags.forEach(function(t,idx){
+        var span=document.createElement('span');
+        span.className='pill ' + (t.tone==='bad'?'bad':t.tone==='good'?'good':'');
+        span.innerHTML=(t.tone==='bad'?'😵':t.tone==='good'?'🌟':'😶')+' '+ escapeHtml(t.text) + ' <button title="移除" class="text-gray-500 hover:text-red-600" data-x="'+idx+'">✕</button>';
+        tagWall.appendChild(span);
+      });
+      Array.from(tagWall.querySelectorAll('button[data-x]')).forEach(function(btn){
+        btn.addEventListener('click', function(e){
+          var i=+e.currentTarget.getAttribute('data-x'); var arr=store.tags; arr.splice(i,1); store.tags=arr; renderTags();
+        });
+      });
+    }
+    if(addTagBtn){
+      addTagBtn.addEventListener('click', function(){
+        var text=(tagInput.value||'').trim(); if(!text) return;
+        var arr=store.tags; arr.push({text:text, tone:tagTone.value}); store.tags=arr; tagInput.value=''; renderTags();
+      });
+      renderTags();
+    }
+  }
+
+  // Tabs
+  var tabContent=$('#tabContent'); var tabs=$all('.tab');
+  var T={ tab1:$('#tab1-tpl').innerHTML, tab2:$('#tab2-tpl').innerHTML, tab3:$('#tab3-tpl').innerHTML };
+  function activateTab(id){
+    tabs.forEach(function(b){ b.classList.toggle('active', b.getAttribute('data-tab')===id); });
+    tabContent.innerHTML=T[id];
+    if(id==='tab1'){ bindTimer(); bindDoodle(); }
+    if(id==='tab2'){ bindFlip(); }
+    if(id==='tab3'){ bindIdentityCard(); }
+    bindGuideButtons(); // 確保任何分頁開啟引導模式都可用
+  }
+  tabs.forEach(function(b){ b.addEventListener('click', function(){ activateTab(b.getAttribute('data-tab')); }); });
+
+  // Timer
+  function bindTimer(){
+    var timerDisplay=$('#timerDisplay'), timerControls=$('#timerControls'), timerResult=$('#timerResult');
+    var timerInterval, startTime;
+    function formatTime(ms){ var s=Math.floor((ms/1000)%60), m=Math.floor((ms/(1000*60))%60); return String(m).padStart(2,'0')+':'+String(s).padStart(2,'0'); }
+    function startTimer(){
+      startTime=Date.now(); timerResult.textContent='';
+      timerControls.innerHTML='<button id="stopTimerBtn" class="btn-secondary font-bold py-3 px-8 rounded-full text-lg">我覺得一分鐘到了</button>';
+      $('#stopTimerBtn').addEventListener('click', stopTimer);
+      timerInterval=setInterval(function(){ var elapsed=Date.now()-startTime; timerDisplay.textContent=formatTime(elapsed); },100);
+    }
+    function stopTimer(){
+      clearInterval(timerInterval);
+      var duration=Date.now()-startTime; var diff=Math.abs(duration-60000);
+      var text='你認為的一分鐘是 '+ (Math.round(duration/100)/10).toFixed(1) +' 秒。';
+      if(diff<=5000) text+=' 非常接近！你的內在時鐘很準確。';
+      else if(diff<=15000) text+=' 還不錯！多練習可以更精準。';
+      else text+=' 差距有點大，這說明我們的思緒很容易影響時間感。這正是練習專注的價值所在！';
+      timerResult.innerHTML=text;
+      timerControls.innerHTML='<button id="startTimerBtnNew" class="btn-primary font-bold py-3 px-8 rounded-full text-lg">再試一次</button>';
+      $('#startTimerBtnNew').addEventListener('click', startTimer);
+    }
+    var startBtn=$('#startTimerBtn'); if(startBtn) startBtn.addEventListener('click', startTimer);
+  }
+
+  // Doodle
+  function bindDoodle(){
+    var canvas=$('#doodleCanvas'), startBtn=$('#startDoodle'), clearBtn=$('#clearDoodle');
+    if(!canvas) return;
+    var ctx=canvas.getContext('2d'); var drawing=false, started=false;
+    function resizeDPR(){
+      var ratio=window.devicePixelRatio||1; var rect=canvas.getBoundingClientRect();
+      canvas.width=rect.width*ratio; canvas.height=rect.height*ratio; ctx.setTransform(ratio,0,0,ratio,0,0);
+    }
+    resizeDPR(); window.addEventListener('resize', resizeDPR);
+    function pos(e){ var r=canvas.getBoundingClientRect(); var x=(e.touches?e.touches[0].clientX:e.clientX)-r.left; var y=(e.touches?e.touches[0].clientY:e.clientY)-r.top; return {x:x,y:y}; }
+    function dot(x,y){ ctx.fillStyle='#111827'; ctx.beginPath(); ctx.arc(x,y,1.2,0,Math.PI*2); ctx.fill(); }
+    function move(e){ if(!drawing) return; var p=pos(e); dot(p.x,p.y); }
+    function down(e){ drawing=started; move(e); }
+    function up(){ drawing=false; }
+    if(startBtn) startBtn.addEventListener('click', function(){ started=true; startBtn.disabled=true; startBtn.textContent='已開始'; });
+    if(clearBtn) clearBtn.addEventListener('click', function(){ ctx.clearRect(0,0,canvas.width,canvas.height); });
+    canvas.addEventListener('mousedown', down); canvas.addEventListener('mousemove', move); window.addEventListener('mouseup', up);
+    canvas.addEventListener('touchstart', down, {passive:false});
+    canvas.addEventListener('touchmove', function(e){ e.preventDefault(); move(e); }, {passive:false});
+    canvas.addEventListener('touchend', up);
+  }
+
+  // FLIP
+  var FLIPCARD_POOL=[
+    {title:'F｜Find Facts', steps:['把事件改寫成純事實句。','移除動機與性格推論。','確認：有沒有證據？']},
+    {title:'L｜Locate Levers', steps:['我能影響哪一小部分？','把範圍縮小到可行的一步。','定義今天能做的 10 分鐘行動。']},
+    {title:'I｜Inventory Values', steps:['這件事踩到了我哪些價值？','換個價值視角會怎麼看？','寫一句對齊價值的回應。']},
+    {title:'P｜Plan the Next', steps:['如果重來一次，我的 B 計畫？','誰能協助我？','預約下一次檢視時間。']},
+  ];
+  function bindFlip(){
+    var pickBtn=$('#pickBadTag'), pickedTag=$('#pickedTag'), flipInput=$('#flipRewrite'), saveFlip=$('#saveFlip'), hint=$('#flipSavedHint'), drawBtn=$('#drawFlipCard'), flipCard=$('#flipCard'), flipGuide=$('#flipCardGuide'), flipList=$('#flipList'), cancelEdit=$('#cancelEdit');
+    var editingIndex=null;
+    function escapeHtml(s){ return (s||'').replace(/[&<>"]/g, function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]}); }
+    function renderList(){
+      var arr=store.flips.slice().sort(function(a,b){return b.time-a.time;});
+      if(arr.length===0){ flipList.innerHTML='<li class="text-gray-500">（目前沒有紀錄）</li>'; return; }
+      flipList.innerHTML=arr.map(function(f){
+        var globalIndex=store.flips.findIndex(function(x){return x.time===f.time && x.tag===f.tag && x.text===f.text;});
+        return '<li class="p-3 border rounded-lg flex flex-col md:flex-row md:items-center md:justify-between gap-2">\
+          <div>'+ new Date(f.time).toLocaleString() +'｜<b>'+ escapeHtml(f.tag) +'</b> → '+ escapeHtml(f.text) +'</div>\
+          <div class="flex gap-2 shrink-0">\
+            <button class="btn-ghost rounded px-3 py-1" data-edit="'+globalIndex+'">編輯</button>\
+            <button class="btn-danger rounded px-3 py-1" data-del="'+globalIndex+'">刪除</button>\
+          </div>\
+        </li>';
+      }).join('');
+      Array.from(flipList.querySelectorAll('button[data-del]')).forEach(function(btn){
+        btn.addEventListener('click', function(e){
+          var idx=+e.currentTarget.getAttribute('data-del'); var arr2=store.flips; arr2.splice(idx,1); store.flips=arr2; if(editingIndex===idx){ resetEditUI(); } renderList();
+        });
+      });
+      Array.from(flipList.querySelectorAll('button[data-edit]')).forEach(function(btn){
+        btn.addEventListener('click', function(e){
+          var idx=+e.currentTarget.getAttribute('data-edit'); var rec=store.flips[idx];
+          pickedTag.textContent='😵 '+rec.tag; pickedTag.setAttribute('data-value', rec.tag);
+          flipInput.value=rec.text; editingIndex=idx; saveFlip.textContent='更新反轉'; cancelEdit.classList.remove('hidden'); hint.textContent='（編輯模式）';
+        });
+      });
+    }
+    function resetEditUI(){ editingIndex=null; saveFlip.textContent='儲存反轉'; cancelEdit.classList.add('hidden'); hint.textContent=''; flipInput.value=''; }
+    renderList();
+    if(cancelEdit) cancelEdit.addEventListener('click', resetEditUI);
+    if(pickBtn) pickBtn.addEventListener('click', function(){
+      var bads=store.tags.filter(function(t){return t.tone==='bad';}); if(bads.length===0){ pickedTag.textContent='（標籤牆尚未新增負向標籤）'; return; }
+      var r=bads[Math.floor(Math.random()*bads.length)]; pickedTag.textContent='😵 '+r.text; pickedTag.setAttribute('data-value', r.text);
+    });
+    if(saveFlip) saveFlip.addEventListener('click', function(){
+      var tag=pickedTag.getAttribute('data-value'); var text=(flipInput.value||'').trim();
+      if(!tag||!text){ hint.textContent='請先抽標籤並填入反轉敘事'; return; }
+      var arr=store.flips||[];
+      if(editingIndex!==null){ arr[editingIndex]={tag:tag,text:text,time:arr[editingIndex].time}; hint.textContent='已更新'; }
+      else { arr.push({tag:tag,text:text,time:Date.now()}); hint.textContent='已儲存'; }
+      store.flips=arr; setTimeout(function(){ hint.textContent=''; },1500); renderList(); resetEditUI();
+    });
+    if(drawBtn) drawBtn.addEventListener('click', function(){
+      var card=FLIPCARD_POOL[Math.floor(Math.random()*FLIPCARD_POOL.length)];
+      flipCard.textContent='🃏 '+card.title;
+      flipGuide.innerHTML=card.steps.map(function(s){return '<li>'+s+'</li>';}).join('');
+    });
+  }
+
+  // Identity + Guide
+  function bindIdentityCard(){
+    var valuesList=$('#valuesList'), newValue=$('#newValue'), addValue=$('#addValue'), coreGroup=$('#weeklyCoreGroup');
+    var rolesList=$('#rolesList'), newRole=$('#newRole'), addRole=$('#addRole');
+    var idImage=$('#idImage'), saveBtn=$('#saveIdentity'), hint=$('#idSavedHint'), preview=$('#idPreview');
+    var onlineSelf=$('#onlineSelf'), offlineSelf=$('#offlineSelf'), saveMirror=$('#saveMirror'), mirrorSaved=$('#mirrorSavedHint'), gapPreview=$('#gapPreview');
+
+    var idOld=store.identity||{};
+    var state={
+      values:Array.isArray(idOld.values)? idOld.values : (idOld.personal? idOld.personal.split(/[、,，\s]+/).filter(Boolean): []),
+      weeklyCore:idOld.weeklyCore||'',
+      roles:Array.isArray(idOld.roles)? idOld.roles : (idOld.social? idOld.social.split(/[、,，\s]+/).filter(Boolean).map(function(r){return {role:r, rule:''};}) : []),
+      image:idOld.image||''
+    };
+
+    function escapeHtml(s){ return (s||'').replace(/[&<>"]/g, function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]}); }
+
+    function renderValues(){
+      valuesList.innerHTML='';
+      (state.values||[]).forEach(function(v,i){
+        var row=document.createElement('div'); row.className='flex items-center gap-2';
+        row.innerHTML='<input class="rounded-lg border px-3 py-2 flex-1" value="'+escapeHtml(v)+'" data-vi="'+i+'" />\
+                       <button class="row-btn" data-up="'+i+'" title="上移">↑</button>\
+                       <button class="row-btn" data-down="'+i+'" title="下移">↓</button>\
+                       <button class="row-btn" data-del="'+i+'" title="刪除">✕</button>';
+        valuesList.appendChild(row);
+      });
+      Array.from(valuesList.querySelectorAll('input[data-vi]')).forEach(function(inp){
+        inp.addEventListener('input', function(e){ var i=+e.currentTarget.getAttribute('data-vi'); state.values[i]=e.currentTarget.value.trim(); renderCoreGroup(); });
+      });
+      Array.from(valuesList.querySelectorAll('button[data-del]')).forEach(function(btn){
+        btn.addEventListener('click', function(e){ var i=+e.currentTarget.getAttribute('data-del'); state.values.splice(i,1); if(state.weeklyCore && state.values.indexOf(state.weeklyCore)===-1) state.weeklyCore=''; renderValues(); renderCoreGroup(); });
+      });
+      Array.from(valuesList.querySelectorAll('button[data-up]')).forEach(function(btn){
+        btn.addEventListener('click', function(e){ var i=+e.currentTarget.getAttribute('data-up'); if(i<=0) return; var t=state.values[i-1]; state.values[i-1]=state.values[i]; state.values[i]=t; renderValues(); renderCoreGroup(); });
+      });
+      Array.from(valuesList.querySelectorAll('button[data-down]')).forEach(function(btn){
+        btn.addEventListener('click', function(e){ var i=+e.currentTarget.getAttribute('data-down'); if(i>=state.values.length-1) return; var t=state.values[i+1]; state.values[i+1]=state.values[i]; state.values[i]=t; renderValues(); renderCoreGroup(); });
+      });
+    }
+    function renderCoreGroup(){
+      coreGroup.innerHTML='';
+      (state.values||[]).forEach(function(v){
+        if(!v) return;
+        var id='core_'+btoa(unescape(encodeURIComponent(v))).replace(/=/g,'');
+        var row=document.createElement('div'); row.className='flex items-center gap-2';
+        row.innerHTML='<input type="radio" name="weeklyCore" id="'+id+'" '+(state.weeklyCore===v?'checked':'')+' />\
+                       <label for="'+id+'" class="flex-1">'+escapeHtml(v)+'</label>';
+        coreGroup.appendChild(row);
+      });
+      Array.from(coreGroup.querySelectorAll('input[name="weeklyCore"]')).forEach(function(r){
+        r.addEventListener('change', function(e){ var label=e.currentTarget.nextElementSibling; state.weeklyCore=label.textContent.trim(); });
+      });
+    }
+    function renderRoles(){
+      rolesList.innerHTML='';
+      (state.roles||[]).forEach(function(r,i){
+        var row=document.createElement('div'); row.className='border rounded-lg p-3 bg-white';
+        row.innerHTML='<div class="flex gap-2 mb-2">\
+                         <input class="rounded-lg border px-3 py-2 flex-1" placeholder="角色名稱" value="'+escapeHtml(r.role||'')+'" data-ri="'+i+'" data-field="role" />\
+                         <button class="row-btn" data-rdel="'+i+'" title="刪除角色">✕</button>\
+                       </div>\
+                       <input class="rounded-lg border px-3 py-2 w-full" placeholder="行為規則：當我在【角色】面對【情境】時，我以【核心價值】為準，選擇【具體行為】。" value="'+escapeHtml(r.rule||'')+'" data-ri="'+i+'" data-field="rule" />\
+                       <div class="mt-2"><button class="row-btn" data-autofill="'+i+'">用核心價值自動套版</button></div>';
+        rolesList.appendChild(row);
+      });
+      Array.from(rolesList.querySelectorAll('input[data-field]')).forEach(function(inp){
+        inp.addEventListener('input', function(e){ var i=+e.currentTarget.getAttribute('data-ri'); var f=e.currentTarget.getAttribute('data-field'); state.roles[i][f]=e.currentTarget.value; });
+      });
+      Array.from(rolesList.querySelectorAll('button[data-rdel]')).forEach(function(btn){
+        btn.addEventListener('click', function(e){ var i=+e.currentTarget.getAttribute('data-rdel'); state.roles.splice(i,1); renderRoles(); });
+      });
+      Array.from(rolesList.querySelectorAll('button[data-autofill]')).forEach(function(btn){
+        btn.addEventListener('click', function(e){
+          var i=+e.currentTarget.getAttribute('data-autofill'); var role=state.roles[i]&&state.roles[i].role? state.roles[i].role : '（角色）'; var core=state.weeklyCore||'（核心價值）';
+          var tmpl='當我在「'+role+'」角色面對【具體情境】時，我以「'+core+'」為準，選擇【具體行為】。';
+          var box=rolesList.querySelector('input[data-ri="'+i+'"][data-field="rule"]'); if(box){ box.value=tmpl; state.roles[i].rule=tmpl; }
+        });
+      });
+    }
+    if(addValue) addValue.addEventListener('click', function(){ var v=(newValue.value||'').trim(); if(!v) return; state.values.push(v); newValue.value=''; renderValues(); renderCoreGroup(); });
+    if(addRole) addRole.addEventListener('click', function(){ var r=(newRole.value||'').trim(); if(!r) return; state.roles.push({role:r, rule:''}); newRole.value=''; renderRoles(); });
+
+    idImage.value=state.image||'';
+    renderValues(); renderCoreGroup(); renderRoles();
+
+    var m=store.mirror||{}; if(onlineSelf) onlineSelf.value=m.online||''; if(offlineSelf) offlineSelf.value=m.offline||'';
+    if(m.online||m.offline){ gapPreview.classList.remove('hidden'); gapPreview.innerHTML=renderGap(m); }
+    function renderGap(v){ var gap=1-jaccard(v.online||'',v.offline||''); var score=(gap*100).toFixed(0); var desc=gap<0.34?'差距偏大：留意是否迎合評價':'差距適中或小：線上線下較一致'; return '<div><div class="font-semibold mb-1">差距觀察</div><p class="text-gray-700"><b>估計一致度：</b>'+score+' / 100</p><p class="text-gray-700 mt-1">'+desc+'</p></div>'; }
+    if(saveMirror) saveMirror.addEventListener('click', function(){ var v={online:onlineSelf.value.trim(), offline:offlineSelf.value.trim()}; store.mirror=v; if(mirrorSaved) mirrorSaved.textContent='已儲存'; if(gapPreview){ gapPreview.classList.remove('hidden'); gapPreview.innerHTML=renderGap(v); } setTimeout(function(){ if(mirrorSaved) mirrorSaved.textContent=''; },1500); });
+
+    if(saveBtn) saveBtn.addEventListener('click', function(){
+      var identity={ values:(state.values||[]).filter(Boolean), weeklyCore:state.weeklyCore||'', roles:(state.roles||[]).filter(function(r){return r.role||r.rule;}), image:idImage.value.trim(), personal:(state.values||[]).join('、'), social:(state.roles||[]).map(function(r){return r.role;}).join('、') };
+      store.identity=identity; if(hint) hint.textContent='已儲存'; if(preview){ preview.classList.remove('hidden'); preview.innerHTML=renderPreview(identity); } setTimeout(function(){ if(hint) hint.textContent=''; },1500);
+    });
+    function renderPreview(v){
+      var vals=(v.values||[]).map(function(x){return '<span class="pill mr-1 mb-1">'+x+'</span>';}).join(' ');
+      var roles=(v.roles||[]).map(function(r){return '<li><b>'+ (r.role||'') +'</b>：'+ (r.rule||'') +'</li>';}).join('') || '<li class="text-gray-500">—</li>';
+      return '<div class="space-y-2">\
+        <div><b>核心價值清單：</b> '+(vals||'—')+'</div>\
+        <div><b>本週核心價值：</b> '+(v.weeklyCore||'—')+'</div>\
+        <div><b>形象認同：</b> '+(v.image||'—')+'</div>\
+        <div><b>角色與規則：</b><ul class="list-disc list-inside">'+roles+'</ul></div>\
+      </div>';
+    }
+    var idStored=store.identity||{};
+    if((idStored.values&&idStored.values.length)||(idStored.roles&&idStored.roles.length)||idStored.image||idStored.weeklyCore){
+      if(preview){ preview.classList.remove('hidden'); preview.innerHTML=renderPreview(idStored); }
+      if(Array.isArray(idStored.values)) state.values=idStored.values;
+      if(Array.isArray(idStored.roles)) state.roles=idStored.roles;
+      if(idStored.weeklyCore) state.weeklyCore=idStored.weeklyCore;
+      if(idStored.image) idImage.value=idStored.image;
+      renderValues(); renderCoreGroup(); renderRoles();
+    }
+  }
+
+  // Guide (global bind)
+  function bindGuideButtons(){
+    var open1=$('#openGuide'), open2=$('#openGuide2'), open3=$('#openGuideFromTab2');
+    var modal=$('#guideModal'), closeGuide=$('#closeGuide');
+    var steps=[ $('#guideStep1'), $('#guideStep2'), $('#guideStep3'), $('#guideStep4') ];
+    var idx=0;
+    function showStep(i){
+      idx=i; steps.forEach(function(el,k){ if(el) el.classList.toggle('active', k===i); });
+      Array.from(document.querySelectorAll('.guide-nav')).forEach(function(btn){
+        var target=+btn.getAttribute('data-step')-1; btn.classList.toggle('btn-primary', target===i);
+      });
+      if(i===3){ renderAlignment(); }
+    }
+    function renderAlignment(){
+      var id=store.identity||{};
+      var core=(id.weeklyCore||'')+' '+(id.values? id.values.join(' ') : '');
+      var rolesText=(id.roles||[]).map(function(r){ return (r.role||'')+' '+(r.rule||''); }).join(' ');
+      var image=id.image||'';
+      var sCR=Math.round(jaccard(core, rolesText)*100);
+      var sCI=Math.round(jaccard(core, image)*100);
+      var sRI=Math.round(jaccard(rolesText, image)*100);
+      var c=$('#alignRadar'); if(!c) return;
+      drawRadar3(c, ['Core↔Role','Core↔Image','Role↔Image'], [sCR,sCI,sRI]);
+      var avg=(sCR+sCI+sRI)/3;
+      var msg = avg>=66 ? '整體對齊良好，維持行動規則即可。' : (avg>=33 ? '中度對齊：挑 1–2 處文字再微調，使之更呼應核心價值。' : '對齊不足：請回到 Core 或 Role 重新撰寫，讓形象由價值長出。');
+      var at=$('#alignText'); if(at) at.textContent='Core↔Role：'+sCR+'%，Core↔Image：'+sCI+'%，Role↔Image：'+sRI+'%。'+msg;
+    }
+    function openGuide(){ if(modal){ modal.style.display='flex'; showStep(0); } }
+    [open1,open2,open3].forEach(function(b){ if(b) b.addEventListener('click', openGuide); });
+    if(closeGuide) closeGuide.addEventListener('click', function(){ if(modal) modal.style.display='none'; });
+    var prevBtn=$('#prevStep'), nextBtn=$('#nextStep');
+    if(prevBtn) prevBtn.addEventListener('click', function(){ showStep(Math.max(0, idx-1)); });
+    if(nextBtn) nextBtn.addEventListener('click', function(){ showStep(Math.min(3, idx+1)); });
+    // 導覽列點擊（事件委派）
+    document.addEventListener('click', function(e){
+      var t=e.target;
+      if(t && t.classList.contains('guide-nav')){
+        var n=+t.getAttribute('data-step'); if(n>=1 && n<=4) showStep(n-1);
+      }
+    });
+  }
+
+  // Export
+  function bindExport(){
+    var exportBtn=$('#exportBtn'), exportHint=$('#exportHint'), modal=$('#exportModal'), exportText=$('#exportText');
+    var closeModal=$('#closeModal'), copyBtn=$('#copyBtn');
+    function downloadBlob(text, filename, mime){
+      var blob=new Blob([text], {type:mime}); var url=URL.createObjectURL(blob);
+      var a=document.createElement('a'); a.href=url; a.download=filename; document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(function(){ URL.revokeObjectURL(url); }, 1000);
+    }
+    function buildText(){
+      var p={ tags:store.tags, flips:store.flips, identity:store.identity, mirror:store.mirror };
+      var valsArr=p.identity && p.identity.values? p.identity.values:[];
+      var rolesArr=p.identity && p.identity.roles? p.identity.roles:[];
+      var vals=valsArr.map(function(v){return '- '+v;}).join('\n') || '';
+      var roles=rolesArr.map(function(r){return '- '+(r.role||'')+'｜'+(r.rule||'');}).join('\n') || '';
+      return [
+        '【標籤牆】'
+      ].concat((p.tags||[]).map(function(t){return '- ['+t.tone+'] '+t.text;}))
+      .concat(['','【反轉紀錄】'])
+      .concat((p.flips||[]).sort(function(a,b){return a.time-b.time;}).map(function(f){return '- '+new Date(f.time).toLocaleString()+'｜'+f.tag+' → '+f.text;}))
+      .concat(['','【三層認同對齊卡】','- 核心價值清單：\n'+vals,'- 本週核心價值：'+(p.identity&&p.identity.weeklyCore?p.identity.weeklyCore:''),'- 形象認同：'+(p.identity&&p.identity.image?p.identity.image:''),'- 角色與行為規則：\n'+roles,'','【濾鏡差距】','- 線上：'+(p.mirror&&p.mirror.online?p.mirror.online:''),'- 線下：'+(p.mirror&&p.mirror.offline?p.mirror.offline:'')]).join('\n');
+    }
+    function toMarkdown(){ return buildText(); }
+    function toCSV(){
+      var p={ tags:store.tags, flips:store.flips, identity:store.identity, mirror:store.mirror };
+      function esc(s){ return '"'+ String(s||'').replace(/"/g,'""') + '"'; }
+      var rows=[['Section','Field','Value']];
+      (p.tags||[]).forEach(function(t){ rows.push(['TagWall','tag', t.tone+':'+t.text]); });
+      (p.flips||[]).forEach(function(f){ rows.push(['Flip','record', new Date(f.time).toLocaleString()+'｜'+f.tag+'→'+f.text]); });
+      var valsArr=p.identity && p.identity.values? p.identity.values:[]; valsArr.forEach(function(v){ rows.push(['Identity','value', v]); });
+      rows.push(['Identity','weeklyCore', (p.identity&&p.identity.weeklyCore?p.identity.weeklyCore:'')]);
+      rows.push(['Identity','image', (p.identity&&p.identity.image?p.identity.image:'')]);
+      var rolesArr=p.identity && p.identity.roles? p.identity.roles:[]; rolesArr.forEach(function(r){ rows.push(['Identity','role_rule', (r.role||'')+'｜'+(r.rule||'')]); });
+      rows.push(['Mirror','online', (p.mirror&&p.mirror.online?p.mirror.online:'')]);
+      rows.push(['Mirror','offline', (p.mirror&&p.mirror.offline?p.mirror.offline:'')]);
+      return rows.map(function(r){ return r.map(esc).join(','); }).join('\n');
+    }
+    if(exportBtn){
+      exportBtn.addEventListener('click', function(){ if(exportText) exportText.value=buildText(); if(modal) modal.style.display='flex'; if(exportHint) exportHint.textContent=''; });
+      if(closeModal) closeModal.addEventListener('click', function(){ if(modal) modal.style.display='none'; });
+      if(copyBtn) copyBtn.addEventListener('click', function(){
+        try{ navigator.clipboard.writeText(exportText.value); if(exportHint) exportHint.textContent='（已複製到剪貼簿）'; }catch(e){ if(exportHint) exportHint.textContent='（複製失敗，請手動全選）'; }
+      });
+      var dlTxtUtf8=$('#dlTxtUtf8'), dlTxtBom=$('#dlTxtBom'), dlMd=$('#dlMd'), dlCsv=$('#dlCsv');
+      if(dlTxtUtf8) dlTxtUtf8.addEventListener('click', function(){ downloadBlob(exportText.value, 'Overexposed_Reading_Log_utf8.txt', 'text/plain;charset=utf-8'); });
+      if(dlTxtBom) dlTxtBom.addEventListener('click', function(){
+        var bom=new Uint8Array([0xEF,0xBB,0xBF]); var blob=new Blob([bom, exportText.value], {type:'text/plain;charset=utf-8'}); var url=URL.createObjectURL(blob);
+        var a=document.createElement('a'); a.href=url; a.download='Overexposed_Reading_Log_utf8_BOM.txt'; document.body.appendChild(a); a.click(); a.remove(); setTimeout(function(){ URL.revokeObjectURL(url); },1000);
+      });
+      if(dlMd) dlMd.addEventListener('click', function(){ downloadBlob(toMarkdown(), 'Overexposed_Reading_Log.md', 'text/markdown;charset=utf-8'); });
+      if(dlCsv) dlCsv.addEventListener('click', function(){ downloadBlob(toCSV(), 'Overexposed_Reading_Log.csv', 'text/csv;charset=utf-8'); });
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', function(){
+    /* initBar removed (already handled by Chart.js init) */
+    bindTagWall();
+    bindGuideButtons();
+    activateTab('tab1'); // default
+    bindExport();
+  });
+
+  // Clear all
+  document.addEventListener('click', function(e){
+    var target=e.target; if(target && target.id==='clearAllBtn'){
+      if(!confirm('確定清除本機所有暫存資料？（標籤牆、反轉紀錄、三層認同、濾鏡差距）')) return;
+      localStorage.removeItem('tags'); localStorage.removeItem('flips'); localStorage.removeItem('identity'); localStorage.removeItem('mirror'); alert('已清除。'); location.reload();
+    }
+  });
+})();
+</script>
+</body>
+</html>
+
